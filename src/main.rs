@@ -1,0 +1,365 @@
+use std::env;
+use std::error::Error;
+use std::fmt::{Formatter, Display};
+use std::collections::{HashMap};
+
+use petgraph::{graph::{NodeIndex, EdgeIndex, DiGraph}, dot::{Dot, Config}, visit::{IntoNodeReferences}, algo::{dijkstra, simple_paths::all_simple_paths}};
+use err_derive::Error;
+
+#[derive(Debug, Error)]
+enum RespiError {
+    #[error(display = "csv data is invalid or could not be read")]
+    CsvError()
+}
+
+type RespiGraph = DiGraph<RespiNode, usize>;
+
+struct Respi {
+    graph: DiGraph<RespiNode, usize>
+}
+
+impl Respi {
+    
+    fn init(item_csv_path: String) -> Result<Respi, Box<dyn Error>> {
+        let mut graph = RespiGraph::new();
+        let (new_items, new_syntheses, new_morphs) = Respi::parse_csv(item_csv_path)?;
+
+        let mut item_indices = HashMap::new();
+        
+        
+        
+        for new_item in &new_items {
+            let i = graph.add_node(RespiNode::Item {
+                name: new_item.name.clone(),
+                fire: new_item.fire,
+                ice: new_item.ice,
+                light: new_item.light,
+                wind: new_item.wind,
+                category1: new_item.category1.clone(),
+                category2: new_item.category2.clone(),
+                category3: new_item.category3.clone(),
+                category4: new_item.category4.clone(),
+                item_number: new_item.item_number,
+            });
+            item_indices.insert(&new_item.name, i);
+        }
+
+        for new_synthesis in &new_syntheses {
+            let synth_index = graph.add_node(RespiNode::Synthesis {
+                chapter: new_synthesis.chapter.clone(),
+                synthesis_type: new_synthesis.synthesis_type.clone(),
+                add_category1: new_synthesis.add_category1.clone(),
+                add_category2: new_synthesis.add_category2.clone(),
+                extra_synth_quantity: new_synthesis.extra_synth_quantity,
+                effect_spread: new_synthesis.effect_spread,
+            });
+            
+            if let Some(item_index) = item_indices.get(&new_synthesis.name) {
+                graph.add_edge(synth_index, *item_index, 0);
+                    
+                for ingredient in new_synthesis.ingredients() {
+                    let ingredients: Vec<_> = graph.node_references()
+                        .filter(|(i, n)| {
+                            match n {
+                                RespiNode::Item{name, category1, category2, category3, category4, ..} => {
+                                    [Some(name), category1.as_ref(), category2.as_ref(), category3.as_ref(), category4.as_ref()].iter()
+                                        .find(|c| c == &&Some(&ingredient))
+                                        .is_some()
+                                },
+                                _ => false
+                            }
+                        })
+                        .map(|(i,n)| i)
+                        .collect();
+
+                    for ingredient_index in ingredients {
+                        graph.add_edge(ingredient_index, synth_index, 0);
+                    }
+                }
+            }
+        }
+
+        for new_morph in &new_morphs {
+            let morph_index = 
+            for synthesis in graph.node_references() {
+
+            }
+        }
+
+
+
+/*
+        use std::io::{stdin, stdout, Write};
+        loop {
+            let mut start_name = String::new();
+            print!("start: ");
+            stdout().flush().unwrap();
+            stdin().read_line(&mut start_name);
+            start_name.pop();
+            let start = graph.node_indices().find(|i| graph[*i].name == start_name).unwrap();
+            let mut goal_name = String::new();
+            print!("goal: ");
+            stdout().flush().unwrap();
+            stdin().read_line(&mut goal_name);
+            goal_name.pop();
+            let goal = graph.node_indices().find(|i| graph[*i].name == goal_name).unwrap();
+
+            print!("shortest path: ");
+            for path in petgraph::algo::astar(&graph, start, |finish| finish == goal, |_| 1, |_| 0) {
+                for ni in path.1 {
+                    if graph[ni].name != goal_name {
+                        print!("{} -> ", &graph[ni]);
+                    } else {
+                        print!("{}", &graph[ni]);
+                    }
+                }
+            }
+            println!("\n");
+        }
+*/
+
+        Ok(Respi {
+            graph: graph
+        })
+    }
+    
+    fn parse_csv(item_csv_path: String) -> Result<(Vec<NewItem>, Vec<NewSynthesis>, Vec<NewMorph>), Box<dyn Error>>  {
+        let mut reader = csv::Reader::from_path(item_csv_path)?;
+        let mut new_items = Vec::new();
+        let mut new_syntheses = Vec::new();
+        let mut new_morphs = Vec::new();
+
+        for record in reader.records() {
+            let record = record?;
+
+            if record.len() != 25 {
+                return Err(Box::new(RespiError::CsvError()))
+            } else {
+                fn empty_or_some(text: &str) -> Option<String> {
+                    if text.len() == 0 {
+                        None
+                    } else {
+                        Some(text.to_owned())
+                    }
+                }
+
+                let name = record[0].to_string();
+                let fire = record[1].len() != 0;
+                let ice = record[2].len() != 0;
+                let light = record[3].len() != 0;
+                let wind = record[4].len() != 0;
+                let category1 = empty_or_some(&record[5]);
+                let category2 = empty_or_some(&record[6]);
+                let category3 = empty_or_some(&record[7]);
+                let category4 = empty_or_some(&record[8]);
+                let item_number = if !record[9].is_empty() {
+                    println!("9: {}", &record[9]);
+                    ItemNumber::MaterialNumber(record[9].parse::<u8>()?)
+                } else {
+                    println!("10: {}", &record[10]);
+                    ItemNumber::RecipeNumber(record[10].parse::<u8>()?)
+                };
+
+                if let ItemNumber::RecipeNumber(_) = item_number {
+                    let chapter = record[11].to_string();
+                    let synthesis_type = record[12].to_string();
+                    let ingredient1 = empty_or_some(&record[13]);
+                    let ingredient2 = empty_or_some(&record[14]);
+                    let ingredient3 = empty_or_some(&record[15]);
+                    let ingredient4 = empty_or_some(&record[16]);
+                    
+                    let from_recipe1 = empty_or_some(&record[17]);
+                    let from_recipe2 = empty_or_some(&record[18]);
+                    let from_requiring1 = empty_or_some(&record[19]);
+                    let from_requiring2 = empty_or_some(&record[20]);
+                    let add_category1 = empty_or_some(&record[21]);
+                    let add_category2 = empty_or_some(&record[22]);
+
+                    let extra_synth_quantity = if record[23].is_empty() {
+                        None
+                    } else {
+                        println!("23: {}", &record[23]);
+                        Some(record[23].parse::<u8>()?)
+                    };
+                    let effect_spread = if record[24].is_empty() {
+                        None
+                    } else {
+                        println!("24: {}", &record[24]);
+                        Some(record[24].parse::<u8>()?)
+                    };
+
+                    new_syntheses.push(
+                        NewSynthesis {
+                            name: name.clone(),
+                            chapter: chapter.clone(),
+                            synthesis_type,
+                            ingredient1,
+                            ingredient2,
+                            ingredient3,
+                            ingredient4,
+                            add_category1,
+                            add_category2,
+                            extra_synth_quantity,
+                            effect_spread
+                        }
+                    );
+
+                    if let (Some(from_recipe), Some(from_requiring)) = (from_recipe1, from_requiring1) {
+                        new_morphs.push(
+                            NewMorph {
+                                name: name.clone(),
+                                chapter: chapter.clone(),
+                                from_recipe,
+                                from_requiring
+                            }
+                        );
+                    }
+
+                    if let (Some(from_recipe), Some(from_requiring)) = (from_recipe2, from_requiring2) {
+                        new_morphs.push(
+                            NewMorph {
+                                name: name.clone(),
+                                chapter: chapter.clone(),
+                                from_recipe,
+                                from_requiring
+                            }
+                        );
+                    }
+                };
+
+                new_items.push(NewItem {
+                        name,
+                        fire,
+                        ice,
+                        light,
+                        wind,
+                        category1,
+                        category2,
+                        category3,
+                        category4,
+                        item_number
+                    }
+                );
+            }
+        }
+
+        Ok((new_items, new_syntheses, new_morphs))
+    }
+    
+    fn run(self) {
+        
+    }
+    
+}
+
+#[derive(Clone, Copy, Debug)]
+enum ItemNumber {
+    MaterialNumber(u8),
+    RecipeNumber(u8)
+}
+
+#[derive(Clone, Debug)]
+enum RespiNode {
+    Synthesis {
+        chapter: String,
+        synthesis_type: String,
+        add_category1: Option<String>,
+        add_category2: Option<String>,
+        extra_synth_quantity: Option<u8>,
+        effect_spread: Option<u8>,
+    },
+    Morph {
+        synthesis_base: NodeIndex
+    },
+    Item {
+        name: String,
+        fire: bool,
+        ice: bool,
+        light: bool,
+        wind: bool,
+        category1: Option<String>,
+        category2: Option<String>,
+        category3: Option<String>,
+        category4: Option<String>,
+        item_number: ItemNumber,
+    }
+}
+
+
+#[derive(Debug)]
+struct NewSynthesis {
+    name: String,
+    chapter: String,
+    synthesis_type: String,
+    ingredient1: Option<String>,
+    ingredient2: Option<String>,
+    ingredient3: Option<String>,
+    ingredient4: Option<String>,
+    add_category1: Option<String>,
+    add_category2: Option<String>,
+    extra_synth_quantity: Option<u8>,
+    effect_spread: Option<u8>,
+}
+
+impl NewSynthesis {
+    fn ingredients(&self) -> Vec<String> {
+        [&self.ingredient1, &self.ingredient2, &self.ingredient3, &self.ingredient4].iter()
+            .filter(|i| i.is_some())
+            .map(|i| i.as_ref().unwrap().clone())
+            .collect()
+    }
+}
+
+#[derive(Debug)]
+struct NewMorph {
+        name: String,
+        chapter: String,
+        from_recipe: String,
+        from_requiring: String,
+}
+
+#[derive(Debug, Clone)]
+struct NewItem {
+    name: String,
+    fire: bool,
+    ice: bool,
+    light: bool,
+    wind: bool,
+    category1: Option<String>,
+    category2: Option<String>,
+    category3: Option<String>,
+    category4: Option<String>,
+    item_number: ItemNumber,
+}
+
+fn print_help() {
+    println!("Usage:\n  respi [OPTION]\n\nOptions:\n  -i, --items <file>\t\tcsv file containing all items");
+}
+
+fn main() {
+    let mut args = env::args();
+    let _program_name = args.next();
+    let mut item_csv_path = String::new();
+
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "respi" => {},
+            "-i" | "--items" => { 
+                if let Some(filepath) = args.next() {
+                    item_csv_path = filepath
+                } else {
+                    print_help()
+                }
+            },
+            _ => {
+                println!("No match: '{}'", arg);
+                print_help()
+            }
+        }
+    }
+
+    match Respi::init(item_csv_path) {
+        Ok(respi) => respi.run(),
+        Err(err) => println!("{}", err)
+    }
+}
