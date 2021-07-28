@@ -1,4 +1,5 @@
 use err_derive::Error;
+use petgraph::graph::NodeIndex;
 use petgraph::{graph::DiGraph, visit::IntoNodeReferences};
 use std::error::Error;
 use std::{collections::HashMap, fmt::Display};
@@ -231,46 +232,59 @@ impl Respi {
         Ok((new_items, new_syntheses, new_morphs))
     }
 
+    fn find_item(&self, item_name: &str) -> Option<NodeIndex> {
+        self.graph.node_indices().find(|i| match &self.graph[*i] {
+            RespiNode::Item { name, .. } => name == item_name,
+            _ => false,
+        })
+    }
+
     #[allow(unreachable_code)]
     fn run(self) -> Result<(), Box<dyn Error>> {
         use std::io::{stdin, stdout, Write};
+
+        fn get_input(target: &mut String, prompt: &str) {
+            print!("{} ", prompt);
+            stdout().flush().unwrap();
+            stdin().read_line(target).unwrap();
+            target.pop();
+        }
+
         loop {
-            let mut start_name = String::new();
-            print!("start: ");
-            stdout().flush().unwrap();
-            stdin().read_line(&mut start_name)?;
-            start_name.pop();
-            let start = self
-                .graph
-                .node_indices()
-                .find(|i| match &self.graph[*i] {
-                    RespiNode::Item { name, .. } => name == &start_name,
-                    _ => false,
-                })
-                .unwrap();
-            let mut goal_name = String::new();
-            print!("goal: ");
-            stdout().flush().unwrap();
-            stdin().read_line(&mut goal_name)?;
-            goal_name.pop();
-            let goal = self
-                .graph
-                .node_indices()
-                .find(|i| match &self.graph[*i] {
-                    RespiNode::Item { name, .. } => name == &goal_name,
-                    _ => false,
-                })
-                .unwrap();
+            let start_index = loop {
+                let mut start_name = String::new();
+                get_input(&mut start_name, "start:");
+                if let Some(node_index) = &self.find_item(&start_name) {
+                    break node_index.clone();
+                }
+            };
+
+            let goal_index = loop {
+                let mut goal_name = String::new();
+                get_input(&mut goal_name, "goal:");
+                if let Some(node_index) = &self.find_item(&goal_name) {
+                    break node_index.clone();
+                }
+            };
 
             print!("shortest path: ");
-            if let Some(path) =
-                petgraph::algo::astar(&self.graph, start, |finish| finish == goal, |_| 1, |_| 0)
-            {
-                for ni in path.1 {
+            if let Some((_, path)) = petgraph::algo::astar(
+                &self.graph,
+                start_index,
+                |finish| finish == goal_index,
+                |_| 1,
+                |_| 0,
+            ) {
+                for ni in path {
                     print!("{}", &self.graph[ni]);
                     if let RespiNode::Item { name, .. } = &self.graph[ni] {
-                        if name != &goal_name {
-                            print!(" -> ");
+                        if let RespiNode::Item {
+                            name: goal_name, ..
+                        } = &self.graph[goal_index]
+                        {
+                            if name != goal_name {
+                                print!(" -> ");
+                            }
                         }
                     } else {
                         print!(" -> ");
@@ -403,18 +417,16 @@ fn main() {
                     print_help()
                 }
             }
-            _ => {
-                println!("No match: '{}'", arg);
-                print_help()
-            }
+            _ => print_help(),
         }
     }
 
     if let Ok(respi) = Respi::init(item_csv_path) {
-//        let graphml = petgraph_graphml::GraphMl::new(respi.graph)
-//            .export_node_weights_display();
-        use petgraph::dot::{Config, Dot};
-        println!("{}", Dot::with_config(&respi.graph, &[Config::EdgeNoLabel]));
-//        respi.run().unwrap();
+        match respi.run() {
+            Err(error) => {
+                println!("{}", error);
+            }
+            _ => {}
+        }
     }
 }
