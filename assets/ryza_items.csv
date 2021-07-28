@@ -182,7 +182,7 @@ Super Steel Gear,X,,,O,(Metal),,,,,180,8,Synthesis,Jade Water,Staltium,(Ore),(Fl
 Pynnor Key,,X,X,,(Important),,,,,181,7,Rare,Old Pynnor Key,Holy Drop,,,,,,,,,,
 Red Stone,X,,,X,(Elixir),(Mystery),,,,182,10,Synthesis,Underworld Core,Holy Drop,Taboo Drop,Dragon's Eye,(Medicinal),(Puniball),,,,,2,2
 Crimson Stone,X,X,X,X,(Important),,,,,183,10,Rare,Queen's Treasure,,,,,,Red Stone,Queen's Treasure,,,,
-Resort Woodchip,X,,,X,(Important),,,,,184,6.5,Remodeling,Soleil Fruit,,,,,,Healing Woodchip,Soleil Fruit,,,,
+Resort Woodchip,X,,,X,(Important),,,,,184,6.5,Remodeling,Soleil Fruit,,,,,,Healing Chip,Soleil Fruit,,,,
 Plain Lumber,X,,X,,(Important),,,,,185,6.5,Remodeling,Grizzly Wood,,,,,,Holy Nut,Grizzly Wood,,,,
 Mastery Paint,,X,,X,(Important),,,,,186,6.5,Remodeling,Akashia Sap,,,,,,Alchemy Paint,Akashia Sap,,,,
 Royal Tilestone,,,X,X,(Important),,,,,187,7,Remodeling,Waterproof Oil,,,,,,Marblestone,Waterproof Oil,,,,
@@ -405,3 +405,4 @@ Lost Material,,,,,,,,,214,,,,,,,,,,,,,,,
 Serene Spirit Water,,X,,X,(Water),(Medicinal),(Elixir),(Mystery),215,,,,,,,,,,,,,,,
 Soleil Fruit,X,,,X,(Important),,,,216,,,,,,,,,,,,,,,
 Waterproof Oil,,,X,X,(Important),,,,217,,,,,,,,,,,,,,,
+Queen's Treasure,X,X,X,X,(Important),,,,,,,,,,,,,,,,,,,
