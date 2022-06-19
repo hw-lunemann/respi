@@ -1,8 +1,7 @@
 use err_derive::Error;
 use petgraph::graph::NodeIndex;
 use petgraph::{graph::DiGraph, visit::IntoNodeReferences};
-use std::error::Error;
-use std::{collections::HashMap, fmt::Display};
+use std::{error::Error, collections::HashMap, fmt::Display};
 
 #[derive(Debug, Error)]
 enum RespiError {
@@ -13,7 +12,7 @@ enum RespiError {
 type RespiGraph = DiGraph<RespiNode, usize>;
 
 struct Respi {
-    graph: DiGraph<RespiNode, usize>,
+    graph: RespiGraph,
 }
 
 impl Respi {
@@ -195,8 +194,8 @@ impl Respi {
                         (from_recipe1, from_requiring1)
                     {
                         new_morphs.push(NewMorph {
-                            name: name.clone(),
-                            chapter: chapter.clone(),
+                            name: name.to_owned(),
+                            chapter: chapter.to_owned(),
                             from_recipe,
                             from_requiring,
                         });
@@ -206,8 +205,8 @@ impl Respi {
                         (from_recipe2, from_requiring2)
                     {
                         new_morphs.push(NewMorph {
-                            name: name.clone(),
-                            chapter: chapter.clone(),
+                            name: name.to_owned(),
+                            chapter: chapter.to_owned(),
                             from_recipe,
                             from_requiring,
                         });
@@ -251,19 +250,19 @@ impl Respi {
         }
 
         loop {
+            let mut start_name = String::new();
             let start_index = loop {
-                let mut start_name = String::new();
                 get_input(&mut start_name, "start:");
                 if let Some(node_index) = &self.find_item(&start_name) {
-                    break node_index.clone();
+                    break *node_index;
                 }
             };
 
+            let mut goal_name = String::new();
             let goal_index = loop {
-                let mut goal_name = String::new();
                 get_input(&mut goal_name, "goal:");
                 if let Some(node_index) = &self.find_item(&goal_name) {
-                    break node_index.clone();
+                    break *node_index;
                 }
             };
 
@@ -422,11 +421,8 @@ fn main() {
     }
 
     if let Ok(respi) = Respi::init(item_csv_path) {
-        match respi.run() {
-            Err(error) => {
-                println!("{}", error);
-            }
-            _ => {}
+        if let Err(error) = respi.run() {
+            println!("{}", error);
         }
     }
 }
